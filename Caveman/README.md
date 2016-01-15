@@ -14,6 +14,7 @@ Main Fields:
 - UI Programming
 
 Mechanics Built:
+- Input System & Camera Setup
 - First Person / Third Person Toggle
 - Stamina System
 - Ragdoll Death System
