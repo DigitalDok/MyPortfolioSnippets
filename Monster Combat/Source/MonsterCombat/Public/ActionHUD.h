@@ -3,6 +3,12 @@
 #pragma once
 
 #include "Blueprint/UserWidget.h"
+#include "ItemPanel_Button.h"
+#include "ItemPanel_Targets.h"
+
+#include "Runtime/UMG/Public/Components/TextBlock.h"
+#include "Runtime/UMG/Public/Components/VerticalBox.h"
+
 #include "ActionHUD.generated.h"
 
 UENUM(BlueprintType)
@@ -15,6 +21,10 @@ enum EActiveMenus
 	ItemsMenu,
 	None
 };
+
+
+
+
 
 /**
  * 
@@ -60,7 +70,22 @@ public:
 		TArray<FString> SelectionTooltips;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
+		TArray<UTexture2D*> MonsterPortraits;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
 		int32 CurrentMonsterID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
+		FString CentralTooltip;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
+		float OpacityOfCentralTooltip;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
+		bool bIsFadingOut;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat UI Properties")
+		float FadeSpeed;
 
 	// *****************************
 
@@ -73,8 +98,44 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
 		TArray<FString> ItemTargets;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
 		TArray<FString> ItemTooltips;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+	FInventory GroupAInventory;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		FInventory GroupBInventory;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		TSubclassOf<UItemPanel_Button> MyInventoryButtonTemplate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		TSubclassOf<UItemPanel_Targets> MyInventoryTargetsTemplate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		TSubclassOf<UItemPanel_Targets> MyInventoryQuantitiesTemplate;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		UVerticalBox* ItemBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		UVerticalBox* TargetBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		UVerticalBox* QuantityBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		TArray<bool> bIsHoveringFromButtons;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		FItem LatestItem;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		FString CurrentTarget;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item UI Properties")
+		bool bIsCustomTooltip;
 
 	// *****************************
 
@@ -90,6 +151,21 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
 		TArray<FString> AbilityTooltips;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		UVerticalBox* AbilityBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		UVerticalBox* TargetAbilityBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		UVerticalBox* MPCostBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		UVerticalBox* ElementalBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		FAbility LatestAbility;
+
 	// *****************************
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
@@ -99,13 +175,19 @@ public:
 		void Ability();
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
-		void AbilitySelected(int32 AbilitySelected, FString Target);
+		void AbilitySelected(FAbility AssociatedAbility);
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
 		void Item();
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
-		void ItemSelected();
+		void ItemSelected(FItem AssociatedItem);
+
+	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
+		void PopulateInventory();
+
+	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
+		void PopulateSpellbook();
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
 		void Defend();

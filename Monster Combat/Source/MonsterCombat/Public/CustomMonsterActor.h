@@ -3,6 +3,8 @@
 #pragma once
 
 #include "GameFramework/Character.h"
+#include "MonsterAnimInstance.h"
+
 #include "CustomMonsterActor.generated.h"
 
 UENUM()
@@ -41,9 +43,6 @@ public:
 		TEnumAsByte<EPartyType> Party;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Components")
-	USkeletalMeshComponent* MonsterSkeletalMesh;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Components")
 	UCameraComponent* MonsterCamera;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Components")
@@ -72,12 +71,30 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
 		int32 CurrentMana;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
+		UTexture2D* MonsterPortrait;
 	
+	// **************************************************************************
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Pos Helper")
+		AActor* LeInitPosActor;
+
+	FVector InitPos;
 
 	// **************************************************************************
 
+	bool bIsDead;
+
+	void MonsterDeath();
+
+	// **************************************************************************
 	
 	float TurningSpeed;
 
 	FRotator InitialCameraRot;
+
+	// **************************************************************************
+
+	UMonsterAnimInstance* AnimInstance;
 };

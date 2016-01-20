@@ -7,6 +7,63 @@
 #include "ActionHUD.h"
 #include "CombatController.generated.h"
 
+UENUM()
+enum EActionPhasesAttack
+{
+	TargetSelection,
+	CameraOnActor,
+	MovingTowardsEnemy,
+	RestAfterMoveFinished,
+	MeleeAttack,
+	RestAfterAttack,
+	MoveTowardsInitialPosition,
+	ResetTurn
+};
+
+UENUM()
+enum EActionPhasesItem
+{
+	TargetSelection_Friendly,
+	CameraOnActor_Item,
+	MovingTowardsFriend,
+	AppliedItemRest,
+	MoveTowardsInitialPosition_Item,
+	ResetTurnItem,
+	GlobalItemUsageWait,
+	GlobalItemUsedWait
+};
+
+UENUM()
+enum EActionPhasesAbility
+{
+	TargetSelectionAbility,
+	CameraOnActorAbility,
+	ActorCastingSpell,
+	ActorSpellCastRest,
+	TargetActorCameraRest,
+	TargetActorCameraEffect,
+	SpellFinalizing,
+	SpellFinalized,
+	ResetTurnAbility
+};
+
+UENUM()
+enum EActionPhasesDefend
+{
+	DefendingParticle,
+	ResetTurnDef
+};
+
+UENUM()
+enum EActionPhasesType
+{
+	Attack,
+	Ability,
+	Item,
+	Defend,
+	Undefined
+};
+
 USTRUCT(BlueprintType)
 struct FMonster
 {
@@ -43,7 +100,14 @@ struct FMonster
 	UPROPERTY(EditAnywhere)
 		int32 SpecialAttack;
 
+	UPROPERTY(EditAnywhere)
+		UTexture2D* MonsterPortrait;
+
+	UPROPERTY(EditAnywhere)
+		FSpellBook MonsterSpellbook;
+
 };
+
 
 UENUM()
 enum ECameras
@@ -76,9 +140,10 @@ public:
 
 	// ********************************************************************************************
 
-	UPROPERTY(EditAnywhere, Category = "User Interface Stuff")
+	UPROPERTY(EditAnywhere, Category = "User Interface Control")
 		TSubclassOf<class UUserWidget> UI_Holder;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "User Interface Control")
 	UActionHUD* MyActionHUD;
 
 	// ********************************************************************************************
@@ -98,8 +163,10 @@ public:
 	
 	// ********************************************************************************************
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turn Based")
 	TArray<ACustomMonsterActor*> TurnOrder;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turn Based")
 	int32 IndexOfCurrentPlayingMonster = -1;
 
 	// ********************************************************************************************
@@ -109,8 +176,10 @@ public:
 
 	AActor* CameraPartyA;
 	AActor* CameraPartyB;
+	AActor* CameraOverhead;
+	TArray<AActor*> MonsterStaticCams;
 
-	bool bIsActorClickEnabled;
+	bool bIsOverheadCamera;
 
 	// ********************************************************************************************
 
@@ -120,15 +189,73 @@ public:
 	// ********************************************************************************************
 	
 	FVector GetEnemyMeleeReceiverPosByID(int32 ID);
+
+	FVector GetEnemyPosByID(int32 ID);
+
 	AController* GetEnemyControllerByID(int32 ID);
 
-	bool bIsWalkingTowardsDestination;
+	AActor* GetEnemyActorByID(int32 ID);
+
 	FVector ReceiverPos;
 
+	FVector InitialPosition;
+
+	FRotator FindLookAtRotation(FVector Start, FVector Target);
+
 	// ********************************************************************************************
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+		TEnumAsByte<EActionPhasesAttack> CurrentAttackPhase;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+		TEnumAsByte<EActionPhasesDefend> CurrentDefendPhase;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+		TEnumAsByte<EActionPhasesItem> CurrentItemPhase;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+		TEnumAsByte<EActionPhasesAbility> CurrentAbilityPhase;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+	TEnumAsByte<EActionPhasesType> CurrentPhase;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+	float HelperPhaseTimer;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Phase Control")
+	float GlobalWaitingTimer;
+
+	// ********************************************************************************************
+
+	void ApplyDamage(ACustomMonsterActor* Damager, ACustomMonsterActor* Victim);
+
+	// ********************************************************************************************
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory Management")
+		FInventory GroupInventories;
+
+	FInventory GroupAInventory;
+	FInventory GroupBInventory;
+
+	void InitializeInventoryStock();
+
+	// ********************************************************************************************
+
+	void PlaySound(USoundWave* SoundEffect);
+
+	TArray<UAudioComponent*> SoundEffects;
+
+	TScriptDelegate<FWeakObjectPtr> AudioFinishDelegate;
+
+	UFUNCTION()
+	void DestroyFinishedAudio();
+	
+	// ********************************************************************************************
+
 	void ReferenceCameras();
 	
 	void ChangeCamera(ECameras CamType);
+	void ChangeCamera(int32 MonsterID);
 
 	void DetermineParties();
 	void DetermineTurnOrder();
