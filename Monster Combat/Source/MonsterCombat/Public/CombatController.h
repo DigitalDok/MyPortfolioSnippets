@@ -4,7 +4,7 @@
 
 #include "GameFramework/PlayerController.h"
 #include "CustomMonsterActor.h"
-#include "ActionHUD.h"
+
 #include "CombatController.generated.h"
 
 UENUM()
@@ -95,13 +95,31 @@ struct FMonster
 		int32 Attack;
 
 	UPROPERTY(EditAnywhere)
+		float DmgBonus_Min;
+
+	UPROPERTY(EditAnywhere)
+		float DmgBonus_Max;
+
+	UPROPERTY(EditAnywhere)
 		int32 SpecialDefence;
 
 	UPROPERTY(EditAnywhere)
 		int32 SpecialAttack;
 
 	UPROPERTY(EditAnywhere)
+		int32 CritChance;
+
+	UPROPERTY(EditAnywhere)
+		float CritMultiplier;
+
+	UPROPERTY(EditAnywhere)
+		int32 HitChance;
+
+	UPROPERTY(EditAnywhere)
 		UTexture2D* MonsterPortrait;
+
+	UPROPERTY(EditAnywhere)
+		TEnumAsByte<EElementalPower> MonsterAffinityType;
 
 	UPROPERTY(EditAnywhere)
 		FSpellBook MonsterSpellbook;
@@ -169,6 +187,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turn Based")
 	int32 IndexOfCurrentPlayingMonster = -1;
 
+	bool bWillChangeAfterDeath;
+
 	// ********************************************************************************************
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera System")
@@ -229,12 +249,21 @@ public:
 
 	void ApplyDamage(ACustomMonsterActor* Damager, ACustomMonsterActor* Victim);
 
+	void ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustomMonsterActor* Victim, FAbility Spell);
+	
+	void ApplyItem(FItem ItemToApply, ACustomMonsterActor* Target);
+	
+	float GetMultiplierBasedOnElements(EElementalPower Element_Spell, EElementalPower Element_Victim);
+
 	// ********************************************************************************************
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory Management")
 		FInventory GroupInventories;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory Management")
 	FInventory GroupAInventory;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Inventory Management")
 	FInventory GroupBInventory;
 
 	void InitializeInventoryStock();
@@ -251,6 +280,18 @@ public:
 	void DestroyFinishedAudio();
 	
 	// ********************************************************************************************
+
+	void Attacking(float DeltaTime);
+	void UsingItems(float DeltaTime);
+	void UsingAbilities(float DeltaTime);
+	void Defending(float DeltaTime);
+
+	void CheckForWinConditions();
+
+	// ********************************************************************************************
+
+	void InitializerGrande();
+	bool bIsInitialized;
 
 	void ReferenceCameras();
 	

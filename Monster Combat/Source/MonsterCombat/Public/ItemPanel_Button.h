@@ -12,19 +12,19 @@ enum EStatusAbnormality
 	Poison,
 	Stun,
 	Paralyze,
-	Silence
+	Silence,
+	Blind
 };
 
 UENUM(BlueprintType)
 enum EElementalPower
 {
 	Normal,
+	Storm,
+	Earth,
 	Fire,
-	Frost,
-	Nature,
-	Thunder,
-	Air,
-	Darkness
+	Water,
+	Arcane
 };
 
 USTRUCT(BlueprintType)
@@ -87,10 +87,10 @@ struct FAbility
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
 		int32 BaseSpellPowerBonusMana_Max;
 
-	// --- If this is ZERO, then it won't cause any damage or heal --- //
+	// --- If this is ZERO, then it won't apply any buff --- //
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
-		int32 TurnsForDamage;
+		int32 TurnsOfEffect;
 
 	// --- The Elemental Power that comes along with this ability, if any --- //
 
@@ -122,16 +122,21 @@ struct FAbility
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
 		int32 AlterationOfMagicDefense;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
-		int32 TurnsForAlteration;
-
 	// --- Apply Extra Damage or Heal After X Turns ---- //
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
 		int32 SpellDamageAfterXTurns;
 
+	// ---------- Critical -------------- //
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
-		int32 TurnsForExtraDamage;
+		int32 SpellHitChance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
+		int32 SpellCritChance;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
+		float SpellCritMultiplier;
 
 };
 

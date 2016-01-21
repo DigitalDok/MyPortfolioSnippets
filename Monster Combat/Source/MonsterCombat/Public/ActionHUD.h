@@ -164,6 +164,9 @@ public:
 		UVerticalBox* ElementalBox;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
+		UVerticalBox* PowerBox;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ability UI Properties")
 		FAbility LatestAbility;
 
 	// *****************************
@@ -188,6 +191,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
 		void PopulateSpellbook();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = "UI Stuff")
+		void UpdateTurnOrder();
+
+	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
+		const FString GetTextFromActor(int32 ID);
 
 	UFUNCTION(BlueprintCallable, Category = "UI Stuff")
 		void Defend();

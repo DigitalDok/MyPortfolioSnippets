@@ -19,6 +19,7 @@ void UActionHUD::Attack()
 void UActionHUD::Item()
 {
 	DepthLevel = 1;
+	CurrentTarget = "";
 	CurrentMenu = EActiveMenus::ItemsMenu;
 	Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Item;
 	PopulateInventory();
@@ -28,6 +29,7 @@ void UActionHUD::Ability()
 {
 	DepthLevel = 1;
 	CurrentMenu = EActiveMenus::AbilitiesMenu;
+	CurrentTarget = "";
 	Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Ability;
 	PopulateSpellbook();
 }
@@ -105,6 +107,7 @@ void UActionHUD::PopulateSpellbook()
 	TargetAbilityBox->ClearChildren();
 	MPCostBox->ClearChildren();
 	ElementalBox->ClearChildren();
+	PowerBox->ClearChildren();
 
 	FSpellBook OurSpellbook;
 	
@@ -124,11 +127,13 @@ void UActionHUD::PopulateSpellbook()
 		UItemPanel_Targets* Target = CreateWidget<UItemPanel_Targets>(GetWorld(), MyInventoryTargetsTemplate);
 		UItemPanel_Targets* Mana = CreateWidget<UItemPanel_Targets>(GetWorld(), MyInventoryQuantitiesTemplate);
 		UItemPanel_Targets* Elemental = CreateWidget<UItemPanel_Targets>(GetWorld(), MyInventoryQuantitiesTemplate);
+		UItemPanel_Targets* PowerTxt = CreateWidget<UItemPanel_Targets>(GetWorld(), MyInventoryQuantitiesTemplate);
 
 		Button->AddToViewport();
 		Target->AddToViewport();
 		Mana->AddToViewport();
 		Elemental->AddToViewport();
+		PowerTxt->AddToViewport();
 
 		Button->MyText = OurSpellbook.Abilities[i].Name;
 		Button->MyTooltip = OurSpellbook.Abilities[i].Tooltip;
@@ -142,15 +147,18 @@ void UActionHUD::PopulateSpellbook()
 		FString String = EnumPtr->GetEnumName(OurSpellbook.Abilities[i].ElementalPower); 
 
 		Elemental->MyText = String;
+		PowerTxt->MyText = FString::FromInt(OurSpellbook.Abilities[i].BaseSpellPowerHealth);
 
 		Mana->AssociatedButton = Button;
 		Target->AssociatedButton = Button;
 		Elemental->AssociatedButton = Button;
+		PowerTxt->AssociatedButton = Button;
 
 		AbilityBox->AddChild(Button);
 		TargetAbilityBox->AddChild(Target);
 		MPCostBox->AddChild(Mana);
 		ElementalBox->AddChild(Elemental);
+		PowerBox->AddChild(PowerTxt);
 	}
 
 }
@@ -178,6 +186,21 @@ void UActionHUD::AbilitySelected(FAbility AssociatedAbility)
 	Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentAbilityPhase = EActionPhasesAbility::TargetSelectionAbility;
 }
 
+const FString UActionHUD::GetTextFromActor(int32 ID)
+{
+	ACombatController* Controller = Cast<ACombatController>(GetWorld()->GetFirstPlayerController());
+
+	for (size_t i = 0; i < Controller->TurnOrder.Num(); i++)
+	{
+		if (Controller->TurnOrder[i]->MonsterID == ID)
+		{
+			return Controller->TurnOrder[i]->StatusAbnormalitiesTextSweep;
+		}
+	}
+
+	return "";
+}
+
 void UActionHUD::Defend()
 {
 	CurrentMenu = EActiveMenus::None;
@@ -196,23 +219,36 @@ void UActionHUD::Cancel()
 	{
 		if (CurrentMenu == EActiveMenus::SelectFriendlyTargetMenu)
 		{
-			CurrentMenu = EActiveMenus::ItemsMenu;
-			DepthLevel = 1;
+			if (Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase == EActionPhasesType::Item)
+			{
+				CurrentMenu = EActiveMenus::ItemsMenu;
+				DepthLevel = 1;
+				CurrentTarget = "";
+				bIsCustomTooltip = false;
+				BottomTooltip = "";
+				bIsHoveringFromButtons.Empty();
 
-			bIsCustomTooltip = false;
-			BottomTooltip = "";
-			bIsHoveringFromButtons.Empty();
+				Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->ChangeCamera(ECameras::NoneCam);
+			}
+			if (Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase == EActionPhasesType::Ability)
+			{
+				CurrentMenu = EActiveMenus::AbilitiesMenu;
+				DepthLevel = 1;
+				CurrentTarget = "";
+				bIsCustomTooltip = false;
+				BottomTooltip = "";
+				bIsHoveringFromButtons.Empty();
 
-			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->ChangeCamera(ECameras::NoneCam);
-			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Undefined;
+				Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->ChangeCamera(ECameras::NoneCam);
+			}
 		}
 		else if (CurrentMenu == EActiveMenus::SelectHostileTargetMenu)
 		{
 			CurrentMenu = EActiveMenus::AbilitiesMenu;
 			DepthLevel = 1;
 			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->ChangeCamera(ECameras::NoneCam);
-			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Undefined;
 			
+			CurrentTarget = "";
 			bIsCustomTooltip = false;
 			BottomTooltip = "";
 			bIsHoveringFromButtons.Empty();
@@ -223,6 +259,7 @@ void UActionHUD::Cancel()
 		if (CurrentMenu == EActiveMenus::SelectHostileTargetMenu)
 		{
 			CurrentMenu = EActiveMenus::MainMenu;
+			
 			DepthLevel = 0;
 			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->ChangeCamera(ECameras::NoneCam);
 			Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Undefined;
@@ -238,6 +275,7 @@ void UActionHUD::Cancel()
 			TargetAbilityBox->ClearChildren();
 			MPCostBox->ClearChildren();
 			ElementalBox->ClearChildren();
+			PowerBox->ClearChildren();
 		}
 		else if (CurrentMenu == EActiveMenus::ItemsMenu)
 		{
