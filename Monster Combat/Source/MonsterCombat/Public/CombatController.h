@@ -80,6 +80,9 @@ struct FMonster
 		TArray<FString> MonsterNames;
 
 	UPROPERTY(EditAnywhere)
+		TEnumAsByte<EAIArchetypes> AI_Archetype;
+
+	UPROPERTY(EditAnywhere)
 		int32 MaxHP;
 
 	UPROPERTY(EditAnywhere)
@@ -287,6 +290,14 @@ public:
 	void Defending(float DeltaTime);
 
 	void CheckForWinConditions();
+	int32 WinningCondition = 0; // 0 = Noone has won yet. 1 = We have won. 2 = AI has won.
+	bool bWinCountdown;
+	// ********************************************************************************************
+
+	void AI_ExecuteAction();
+	bool bIsAI_PseudoThink; 
+
+	bool bHasFinishedPath;
 
 	// ********************************************************************************************
 
@@ -298,7 +309,10 @@ public:
 	void ChangeCamera(ECameras CamType);
 	void ChangeCamera(int32 MonsterID);
 
+	void SetBottomTooltip(bool bShouldReset, FString ActualText);
+
 	void DetermineParties();
 	void DetermineTurnOrder();
 	void EndTurn();
+
 };

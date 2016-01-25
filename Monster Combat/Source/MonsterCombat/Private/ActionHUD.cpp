@@ -206,10 +206,15 @@ void UActionHUD::Defend()
 	CurrentMenu = EActiveMenus::None;
 	DepthLevel = 0;
 
-	Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentPhase = EActionPhasesType::Defend;
-	Cast<ACombatController>(GetWorld()->GetFirstPlayerController())->CurrentDefendPhase = EActionPhasesDefend::DefendingParticle;
+	ACombatController* Controller = Cast<ACombatController>(GetWorld()->GetFirstPlayerController());
+
+	Controller->CurrentPhase = EActionPhasesType::Defend;
+	Controller->CurrentDefendPhase = EActionPhasesDefend::DefendingParticle;
 
 	bIsFadingOut = false;
+
+	Controller->SetBottomTooltip(true, Controller->TurnOrder[Controller->IndexOfCurrentPlayingMonster]->MonsterName + " Defends! (+50% Defense until next turn!)");
+
 	CentralTooltip = "Defend";
 }
 

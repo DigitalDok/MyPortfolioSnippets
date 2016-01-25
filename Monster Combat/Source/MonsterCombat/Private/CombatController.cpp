@@ -3,6 +3,7 @@
 #include "CombatController.h"
 #include "AIController.h"
 #include "CombatMeters.h"
+#include "MonsterAIController.h"
 
 ACombatController::ACombatController()
 {
@@ -55,7 +56,7 @@ void ACombatController::InitializerGrande()
 	DetermineTurnOrder();
 	InitializeInventoryStock();
 
-	FBuff BuffToApply;
+	/*FBuff BuffToApply;
 	BuffToApply.DamagePerTurn = 5;
 	BuffToApply.TurnsLifetime = 3;
 
@@ -83,7 +84,7 @@ void ACombatController::InitializerGrande()
 
 	BuffToApply2.BuffID = 0;
 	BuffToApply2.DamageOnEnd = 0;
-	TurnOrder[0]->ApplyBuff(BuffToApply2);
+	TurnOrder[0]->ApplyBuff(BuffToApply2);*/
 
 	// Wiring up the delegate that will take care of destroying an audio comp when a sound has finished playing.
 	AudioFinishDelegate.BindUFunction(this, "DestroyFinishedAudio");
@@ -114,7 +115,33 @@ void ACombatController::Tick(float DeltaTime)
 		return;
 	}
 
-	if (!MyActionHUD)return; // This indicates that the game has not started yet, and keeps Controller out of looping while in Editor.
+	if (!MyActionHUD) return; // This indicates that the game has not started yet, and keeps Controller out of looping while in Editor.
+
+	if (WinningCondition!=0 && bWinCountdown)
+	{
+		HelperPhaseTimer += DeltaTime;
+		if (HelperPhaseTimer > 3)
+		{
+
+			if (WinningCondition == 1)
+				SetBottomTooltip(true, "VICTORY!");
+			else
+			{
+				SetBottomTooltip(true, "DEFEAT!");
+			}
+		}
+	}
+
+	if (bIsAI_PseudoThink)
+	{
+		HelperPhaseTimer += DeltaTime;
+		if (HelperPhaseTimer > 2)
+		{
+			bIsAI_PseudoThink = false;
+			HelperPhaseTimer = 0;
+			AI_ExecuteAction();
+		}
+	}
 
 	if (bWillChangeAfterDeath)
 	{
@@ -127,12 +154,9 @@ void ACombatController::Tick(float DeltaTime)
 		}
 	}
 
-	if (bIsOverheadCamera)
-	{
+	if (bIsOverheadCamera) 
 		CameraOverhead->SetActorRotation(FindLookAtRotation(CameraOverhead->GetActorLocation(), TurnOrder[IndexOfCurrentPlayingMonster]->GetActorLocation()));
-	}
-
-
+	
 	switch (CurrentPhase)
 	{
 	case EActionPhasesType::Attack:
@@ -190,17 +214,19 @@ void ACombatController::Attacking(float DeltaTime)
 		{
 			HelperPhaseTimer = 0;
 			InitialPosition = Cast<AActor>(TurnOrder[IndexOfCurrentPlayingMonster])->GetActorLocation();
-			UNavigationSystem::SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
+			UNavigationSystem::SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), FVector(ReceiverPos.X, ReceiverPos.Y, -770.0f));
 			CurrentAttackPhase = EActionPhasesAttack::MovingTowardsEnemy;
 			ChangeCamera(ECameras::FreeRoamCamera);
 			MyActionHUD->bIsFadingOut = true;
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = true;
+			bHasFinishedPath = false;
+			SetBottomTooltip(true, TurnOrder[IndexOfCurrentPlayingMonster]->MonsterName + " is attacking " + MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID] + "!");
 		}
 	}
 	if (CurrentAttackPhase == EActionPhasesAttack::MovingTowardsEnemy)
 	{
 		FVector CurPos = TurnOrder[IndexOfCurrentPlayingMonster]->GetActorLocation();
-		if (FVector::Dist(CurPos, ReceiverPos) < 300)
+		if (bHasFinishedPath)
 		{
 			CurrentAttackPhase = EActionPhasesAttack::RestAfterMoveFinished;
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = false;
@@ -246,16 +272,15 @@ void ACombatController::Attacking(float DeltaTime)
 			NavSys->SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = true;
 			CurrentAttackPhase = EActionPhasesAttack::MoveTowardsInitialPosition;
+			bHasFinishedPath = false;
 		}
 	}
 	if (CurrentAttackPhase == EActionPhasesAttack::MoveTowardsInitialPosition)
 	{
 		FVector CurPos = TurnOrder[IndexOfCurrentPlayingMonster]->GetActorLocation();
-		if (FVector2D::Distance(FVector2D(CurPos.X, CurPos.Y), FVector2D(ReceiverPos.X, ReceiverPos.Y)) < 50)
+		if (bHasFinishedPath)
 		{
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = false;
-			UNavigationSystem::SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
-
 			switch (TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID)
 			{
 			case 0:
@@ -287,6 +312,7 @@ void ACombatController::Attacking(float DeltaTime)
 		HelperPhaseTimer += DeltaTime;
 		if (HelperPhaseTimer > GlobalWaitingTimer)
 		{
+			SetBottomTooltip(false, "");
 			HelperPhaseTimer = 0;
 			CurrentPhase = EActionPhasesType::Undefined;
 			CurrentAttackPhase = EActionPhasesAttack::TargetSelection;
@@ -353,6 +379,10 @@ void ACombatController::UsingItems(float DeltaTime)
 			CurrentItemPhase = EActionPhasesItem::MovingTowardsFriend;
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = true;
 			ChangeCamera(ECameras::FreeRoamCamera);
+
+			FString TargetString = (MyActionHUD->LatestItem.Target.Contains("Single")) ? MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID] : "the whole party!";
+			SetBottomTooltip(true, TurnOrder[IndexOfCurrentPlayingMonster]->MonsterName + " is using " + MyActionHUD->LatestItem.Name + " on " + TargetString);
+			
 		}
 	}
 	else if (CurrentItemPhase == EActionPhasesItem::MovingTowardsFriend)
@@ -399,18 +429,28 @@ void ACombatController::UsingItems(float DeltaTime)
 			MyActionHUD->bIsFadingOut = true;
 			UNavigationSystem* const NavSys = GetWorld()->GetNavigationSystem();
 			ReceiverPos = TurnOrder[IndexOfCurrentPlayingMonster]->InitPos;
-			NavSys->SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
-			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = true;
+			
+			if (MyActionHUD->CurrentMonsterID != TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID)
+			{
+				NavSys->SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
+				bHasFinishedPath = false;
+				TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = true;
+			}
+			else
+			{
+				bHasFinishedPath = true;
+			}
 
+			
+			
 		}
 	}
 	else if (CurrentItemPhase == EActionPhasesItem::MoveTowardsInitialPosition_Item)
 	{
 		FVector CurPos = TurnOrder[IndexOfCurrentPlayingMonster]->GetActorLocation();
-		if (FVector2D::Distance(FVector2D(CurPos.X, CurPos.Y), FVector2D(ReceiverPos.X, ReceiverPos.Y)) < 50)
+		if (bHasFinishedPath)
 		{
 			TurnOrder[IndexOfCurrentPlayingMonster]->AnimInstance->bIsMoving = false;
-			UNavigationSystem::SimpleMoveToLocation(GetEnemyControllerByID(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID), ReceiverPos);
 
 			switch (TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID)
 			{
@@ -442,6 +482,8 @@ void ACombatController::UsingItems(float DeltaTime)
 		HelperPhaseTimer += DeltaTime;
 		if (HelperPhaseTimer > GlobalWaitingTimer)
 		{
+			SetBottomTooltip(false, "");
+
 			HelperPhaseTimer = 0;
 			CurrentPhase = EActionPhasesType::Undefined;
 			CurrentItemPhase = EActionPhasesItem::TargetSelection_Friendly;
@@ -457,6 +499,8 @@ void ACombatController::UsingItems(float DeltaTime)
 
 			MyActionHUD->bIsFadingOut = true;
 			// USE ITEM
+
+			
 
 			if (TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID < 3)
 			{
@@ -500,6 +544,8 @@ void ACombatController::UsingItems(float DeltaTime)
 		HelperPhaseTimer += DeltaTime;
 		if (HelperPhaseTimer > 3)
 		{
+			
+
 			HelperPhaseTimer = 0;
 			ChangeCamera(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID);
 			CurrentItemPhase = EActionPhasesItem::ResetTurnItem;
@@ -565,7 +611,28 @@ void ACombatController::UsingAbilities(float DeltaTime)
 			HelperPhaseTimer = 0;
 
 			// Cast Spell, Play Animation
-			GLog->Log(FString::FromInt(MyActionHUD->CurrentMonsterID));
+
+			FString TargetString;
+
+			if (MyActionHUD->LatestAbility.Target == "Single Ally" || MyActionHUD->LatestAbility.Target == "Single Enemy")
+			{
+				TargetString = MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID];
+			}
+			else if (MyActionHUD->LatestAbility.Target == "Self")
+			{
+				TargetString = "himself";
+			}
+			else if (MyActionHUD->LatestAbility.Target == "All Enemies")
+			{
+				TargetString = "all the enemies";
+			}
+			else if (MyActionHUD->LatestAbility.Target == "All Allies")
+			{
+				TargetString = "the whole party";
+			}
+
+			SetBottomTooltip(true, TurnOrder[IndexOfCurrentPlayingMonster]->MonsterName + " is using " + MyActionHUD->LatestAbility.Name+" on "+TargetString+"!");
+
 			PlaySound(MyActionHUD->LatestAbility.SpellShout);
 			MyActionHUD->bIsFadingOut = true;
 			CurrentAbilityPhase = EActionPhasesAbility::ActorCastingSpell;
@@ -625,6 +692,8 @@ void ACombatController::UsingAbilities(float DeltaTime)
 			HelperPhaseTimer = 0;
 			CurrentAbilityPhase = EActionPhasesAbility::SpellFinalizing;
 
+			TurnOrder[IndexOfCurrentPlayingMonster]->CurrentMana -= MyActionHUD->LatestAbility.ManaCost;
+			MyActionHUD->MonsterMPs_Current[TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID] = TurnOrder[IndexOfCurrentPlayingMonster]->CurrentMana;
 
 			if (MyActionHUD->CurrentTarget == "All Allies")
 			{
@@ -673,6 +742,7 @@ void ACombatController::UsingAbilities(float DeltaTime)
 		HelperPhaseTimer += DeltaTime;
 		if (HelperPhaseTimer > 3)
 		{
+			SetBottomTooltip(false, "");
 			CurrentPhase = EActionPhasesType::Undefined;
 			CurrentAbilityPhase = EActionPhasesAbility::TargetSelectionAbility;
 			EndTurn();
@@ -695,8 +765,9 @@ void ACombatController::Defending(float DeltaTime)
 		break;
 	case EActionPhasesDefend::ResetTurnDef:
 		HelperPhaseTimer += DeltaTime;
-		if (HelperPhaseTimer > GlobalWaitingTimer)
+		if (HelperPhaseTimer > 2)
 		{
+			SetBottomTooltip(false, "");
 			HelperPhaseTimer = 0;
 			CurrentPhase = EActionPhasesType::Undefined;
 			CurrentDefendPhase = EActionPhasesDefend::DefendingParticle;
@@ -838,6 +909,9 @@ void ACombatController::LMB()
 
 				MyActionHUD->bIsCustomTooltip = false;
 				MyActionHUD->BottomTooltip = "";
+
+				FString TargetString = (MyActionHUD->LatestItem.Target.Contains("Single")) ? MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID] : "the whole party!";
+				SetBottomTooltip(true, TurnOrder[IndexOfCurrentPlayingMonster]->MonsterName + " is using " + MyActionHUD->LatestItem.Name + " on " + TargetString);
 
 				CurrentItemPhase = EActionPhasesItem::GlobalItemUsageWait;
 
@@ -1016,6 +1090,12 @@ void ACombatController::EndTurn()
 	else
 		IndexOfCurrentPlayingMonster = 0;
 	
+	if (WinningCondition != 0)
+	{
+		bWinCountdown = true;
+		ChangeCamera(ECameras::NoneCam);
+		return;
+	}
 	
 	if (!TurnOrder[IndexOfCurrentPlayingMonster]->bIsDead)
 	{
@@ -1038,6 +1118,7 @@ void ACombatController::EndTurn()
 
 	if (TurnOrder[IndexOfCurrentPlayingMonster]->bIsDead)
 	{
+		ChangeCamera(TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID);
 		bWillChangeAfterDeath = true;
 		HelperPhaseTimer = 0;
 	}
@@ -1063,7 +1144,7 @@ void ACombatController::EndTurn()
 		}
 		else
 		{
-			EndTurn();
+			bIsAI_PseudoThink = true;
 		}
 	}
 
@@ -1075,10 +1156,12 @@ void ACombatController::CheckForWinConditions()
 	if (PartyA[0]->bIsDead && PartyA[1]->bIsDead && PartyA[2]->bIsDead)
 	{
 		// AI WINS
+		WinningCondition = 2;
 	}
 	else if (PartyB[0]->bIsDead && PartyB[1]->bIsDead && PartyB[2]->bIsDead)
 	{
 		// YOU WIN
+		WinningCondition = 1;
 	}
 }
 
@@ -1090,10 +1173,14 @@ FVector ACombatController::GetEnemyMeleeReceiverPosByID(int32 ID)
 	{
 		if (TurnOrder[i]->MonsterID == ID)
 		{
-			return TurnOrder[i]->GetActorLocation() - TurnOrder[i]->GetActorLocation().ForwardVector * 150;
+			if (ID > 2)
+				return TurnOrder[i]->GetActorLocation() - TurnOrder[i]->GetActorLocation().ForwardVector * 250;
+			if (ID < 3)
+			{	
+				return TurnOrder[i]->GetActorLocation() + TurnOrder[i]->GetActorLocation().ForwardVector * 250;
+			}
 		}
 	}
-
 	return FVector(0);
 }
 
@@ -1129,7 +1216,6 @@ AActor* ACombatController::GetEnemyActorByID(int32 ID)
 
 	for (size_t i = 0; i < 6; i++)
 	{
-		GLog->Log(FString::FromInt(TurnOrder[i]->MonsterID));
 		if (TurnOrder[i]->MonsterID == ID)
 		{
 			return Cast<AActor>(TurnOrder[i]);
@@ -1159,11 +1245,11 @@ void ACombatController::ApplyDamage(ACustomMonsterActor* Damager, ACustomMonster
 
 		if (Damager->HitChance >= FMath::RandRange(0, 100))
 		{
-			int32 DamageBonus = (Damager->GetAttack() / 5) * (FMath::FRandRange(Damager->AttackBonus_Min, Damager->AttackBonus_Max) / 100);
-			int32 Damage = (Damager->GetAttack() / 5) + DamageBonus;
-			
+			float DamageBonus = (Damager->GetAttack() / 5) * (FMath::FRandRange(Damager->AttackBonus_Min, Damager->AttackBonus_Max) / 100);
+			float Damage = (Damager->GetAttack() / 5) + DamageBonus;
+
 			Damage -= (Victim->GetDefense() / 500) * Damage;
-			Damage -= (Victim->bIsDefending) ? ((Victim->GetDefense()*2) / 500) * Damage / 2 : 0;
+			Damage -= (Victim->bIsDefending) ? ((Victim->GetDefense() * 2) / 500) * Damage / 2 : 0;
 
 			if (Damager->AttackCritChance >= FMath::RandRange(0, 100))
 			{
@@ -1171,12 +1257,27 @@ void ACombatController::ApplyDamage(ACustomMonsterActor* Damager, ACustomMonster
 				WillCrit = true;
 			}
 
-			Victim->UpdateHealth(WillCrit ,-Damage);
+			if (Victim->ActiveAbnormalities.Contains(EStatusAbnormality::Reflect))
+			{
+				Damager->UpdateHealth(WillCrit, -Damage/10);
+			}
+
+			Victim->UpdateHealth(WillCrit, -Damage);
 			Victim->AnimInstance->GetHurt();
+
+			if (WillCrit)
+			{
+				SetBottomTooltip(true, "CRITICAL HIT! " + Victim->MonsterName + " takes " + FString::FromInt(FMath::Abs(Damage)) + " Physical Damage!");
+			}
+			else
+			{
+				SetBottomTooltip(true, Victim->MonsterName + " takes " + FString::FromInt(FMath::Abs(Damage)) + " Physical Damage!");
+			}
 		}
 		else
 		{
-			Cast<UCombatMeters>(Victim->MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(false, FLinearColor(1, 1, 1, 1), "Missed!");
+			Cast<UCombatMeters>(Victim->MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(false, FLinearColor(1, 1, 1, 1), "Missed!");
+			SetBottomTooltip(true, Damager->MonsterName + " Missed!");
 		}
 		
 	}
@@ -1186,30 +1287,72 @@ void ACombatController::ApplyItem(FItem ItemToApply, ACustomMonsterActor* Target
 {
 	if (Target)
 	{
+		FString EffectString;
+		int32 EffectCount=0;
+
 		if (ItemToApply.Resurrection)
 		{
-			Target->bIsDead = false;
+			Target->MonsterRez();
+			EffectString = "been resurrected back to life";
+			EffectCount++;
 		}
 
 		if (Target->bIsDead)return;
 
 		if (!Target->bIsDead)
 		{
+			
 			if (ItemToApply.HP_Restored_Quantity > 0)
 			{
 				Target->UpdateHealth(false, ItemToApply.HP_Restored_Quantity);
+
+				if (EffectCount > 0)
+					EffectString += ", ";
+
+				EffectString += "gained +"+ FString::FromInt(ItemToApply.HP_Restored_Quantity) + " HP";
+				EffectCount++;
 			}
 			if (ItemToApply.MP_Restored_Quantity > 0)
 			{
 				Target->UpdateMana(false, ItemToApply.MP_Restored_Quantity);
+
+				if (EffectCount > 0)
+					EffectString += ", ";
+
+				if(EffectString.Contains("gained"))
+					EffectString += " +" + FString::FromInt(ItemToApply.MP_Restored_Quantity) + " MP";
+				else
+					EffectString += "gained +" + FString::FromInt(ItemToApply.MP_Restored_Quantity) + " MP";
+				
+				EffectCount++;
 			}
 			if (ItemToApply.HP_Restored_Percentage > 0)
 			{
-				Target->UpdateHealth(false, (Target->MaxHealth) * (ItemToApply.HP_Restored_Percentage / 100));
+				int32 HP = Target->MaxHealth * (ItemToApply.HP_Restored_Percentage / 100);
+				GLog->Log(FString::FromInt(HP)+ "HP!");
+				Target->UpdateHealth(false, HP);
+
+				if (EffectCount > 0)
+					EffectString += ", ";
+
+				EffectString += "gained +" + FString::FromInt(ItemToApply.HP_Restored_Percentage) + "% HP";
+				EffectCount++;
+
 			}
 			if (ItemToApply.MP_Restored_Percentage > 0)
 			{
-				Target->UpdateMana(false, (Target->MaxMana) * (ItemToApply.MP_Restored_Percentage / 100));
+				int32 MP = FMath::RoundToInt((Target->MaxMana) * (ItemToApply.MP_Restored_Percentage / 100));
+				Target->UpdateMana(false, MP);
+
+				if (EffectCount > 0)
+					EffectString += ", ";
+
+				if (EffectString.Contains("gained"))
+					EffectString += " +" + FString::FromInt(ItemToApply.MP_Restored_Percentage) + "% MP";
+				else
+					EffectString += "gained +" + FString::FromInt(ItemToApply.MP_Restored_Percentage) + "% MP";
+
+				EffectCount++;
 			}
 		}
 
@@ -1228,7 +1371,17 @@ void ACombatController::ApplyItem(FItem ItemToApply, ACustomMonsterActor* Target
 				Target->RemoveBuff(Target->ActiveBuffs[i]);
 			}
 
+			if (EffectCount > 0)
+				EffectString += ", ";
+
+			
+			EffectString += "recovered from all status abnormalities";
 		}
+
+		EffectString += "!";
+		FString TargetString = (MyActionHUD->LatestItem.Target.Contains("Single")) ? MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID] + " has " : "The whole party has ";
+		SetBottomTooltip(true,TargetString + EffectString);
+
 	}
 }
 
@@ -1238,13 +1391,33 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 	{
 		if (Victim->bIsDead)return;
 
-		Damager->CurrentMana -= Spell.ManaCost;
-		MyActionHUD->MonsterMPs_Current[TurnOrder[IndexOfCurrentPlayingMonster]->MonsterID] = Damager->CurrentMana;
+		
 
 		bool WillCrit = false;
 		bool WillHit = false;
+		int32 CachedHPGained = 0; // Used to change the bottom text should both MP and HP are gained.
 
 		if (Spell.Target == "Single Ally" || Spell.Target == "All Allies" || Spell.Target == "Self")WillHit = true;
+
+
+		FString TargetString;
+
+		if (Spell.Target == "Single Ally" || Spell.Target == "Single Enemy")
+		{
+			TargetString = MyActionHUD->MonsterNames[MyActionHUD->CurrentMonsterID];
+		}
+		else if (Spell.Target == "Self")
+		{
+			TargetString = TurnOrder[IndexOfCurrentPlayingMonster]->MonsterName;
+		}
+		else if (Spell.Target == "All Enemies")
+		{
+			TargetString = "All your enemies";
+		}
+		else if (Spell.Target == "All Allies")
+		{
+			TargetString = "The whole party";
+		}
 
 		int32 MagicAmount;
 		if (Spell.BaseSpellPowerHealth != 0)
@@ -1260,6 +1433,21 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 				MagicAmount -= (Victim->GetMagicDefense() / 500)*MagicAmount;
 				MagicAmount -= (Victim->bIsDefending) ? ((Victim->GetMagicDefense() * 2) / 500) * MagicAmount / 2 : 0;
 
+				float Multiplier = GetMultiplierBasedOnElements(Damager->MonsterAffinityType, Victim->MonsterAffinityType);
+				FString EleText;
+				if (Multiplier == 2)
+				{
+					EleText = "It's Super Effective!";
+				}
+				else if (Multiplier == 0.5f)
+				{
+					EleText = "It's Not very Effective...";
+				}
+				else if(Multiplier == 0)
+				{
+					EleText = "The Spell has no effect!";
+				}
+
 				MagicAmount *= GetMultiplierBasedOnElements(Damager->MonsterAffinityType, Victim->MonsterAffinityType);
 
 				if (Spell.SpellCritChance > FMath::RandRange(0, 100) && MagicAmount > 0)
@@ -1268,15 +1456,25 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 					WillCrit = true;
 				}
 
-				Victim->UpdateHealth(WillCrit, -MagicAmount);
-				Victim->AnimInstance->GetHurt();
+				if (MagicAmount == 0)
+				{
+					Cast<UCombatMeters>(Victim->MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Immune!");
+					
+					
+					SetBottomTooltip(true, "But " + TargetString + " is immune to the element of the spell!");
+				}
+				else
+				{
+					Victim->UpdateHealth(WillCrit, -MagicAmount);
+					Victim->AnimInstance->GetHurt();
 
-				if (MagicAmount <= 0)
-					Cast<UCombatMeters>(Victim->MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Immune!");
+					SetBottomTooltip(true, TargetString + " takes " + FString::FromInt(FMath::Abs(MagicAmount)) + " Damage! " + EleText);
+				}
 			}
 			else
 			{
-				Cast<UCombatMeters>(Victim->MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Missed!");
+				Cast<UCombatMeters>(Victim->MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Missed!");
+				SetBottomTooltip(true, "...But It missed!");
 			}
 		}
 		else
@@ -1285,6 +1483,8 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 			int32 BonusMagicAmount = ((Damager->GetMagicAttack() / 5) + Spell.BaseSpellPowerHealth) * (FMath::FRandRange(Spell.BaseSpellPowerBonusHealth_Min, Spell.BaseSpellPowerBonusHealth_Max) / 100);
 			MagicAmount = ((Damager->GetMagicAttack() / 5) + Spell.BaseSpellPowerHealth) + BonusMagicAmount;
 			Victim->UpdateHealth(WillCrit, MagicAmount);
+			SetBottomTooltip(true, TargetString + " gains " + FString::FromInt(FMath::Abs(MagicAmount)) + " HP! ");
+			CachedHPGained = MagicAmount;
 		}
 	}
 
@@ -1300,16 +1500,43 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 
 					MagicAmount -= (Victim->GetMagicDefense() / 500)*MagicAmount;
 
+					float Multiplier = GetMultiplierBasedOnElements(Damager->MonsterAffinityType, Victim->MonsterAffinityType);
+					FString EleText;
+					if (Multiplier == 2)
+					{
+						EleText = "It's Super Effective!";
+					}
+					else if (Multiplier == 0.5f)
+					{
+						EleText = "It's Not very Effective...";
+					}
+					else if (Multiplier == 0)
+					{
+						EleText = "The Spell has no effect!";
+					}
+
 					MagicAmount *= GetMultiplierBasedOnElements(Damager->MonsterAffinityType, Victim->MonsterAffinityType);
 
 					Victim->UpdateMana(WillCrit, -MagicAmount);
 					Victim->AnimInstance->GetHurt();
 					if (MagicAmount <= 0)
-						Cast<UCombatMeters>(Victim->MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Immune!");
+					{
+						Cast<UCombatMeters>(Victim->MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Immune!");
+
+						SetBottomTooltip(true, "But " + TargetString + " is immune to the element of the spell!");
+					}
+					else
+					{
+						Victim->UpdateHealth(WillCrit, -MagicAmount);
+						Victim->AnimInstance->GetHurt();
+
+						SetBottomTooltip(true, TargetString + " takes " + FString::FromInt(FMath::Abs(MagicAmount)) + " MP Damage! " + EleText);
+					}
 				}
 				else
 				{
-					Cast<UCombatMeters>(Victim->MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Missed!");
+					Cast<UCombatMeters>(Victim->MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 1, 1, 1), "Missed!");
+					SetBottomTooltip(true, "...But It missed!");
 				}
 			}
 			else
@@ -1318,6 +1545,17 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 				int32 BonusMagicAmount = ((Damager->GetMagicAttack() / 5) + Spell.BaseSpellPowerMana) * (FMath::FRandRange(Spell.BaseSpellPowerBonusMana_Min, Spell.BaseSpellPowerBonusMana_Max) / 100);
 				MagicAmount = ((Damager->GetMagicAttack() / 5) + Spell.BaseSpellPowerHealth) + BonusMagicAmount;
 				Victim->UpdateMana(WillCrit, MagicAmount);
+
+				if (CachedHPGained > 0)
+				{
+					SetBottomTooltip(true, TargetString + " gains " + FString::FromInt(CachedHPGained) + " HP and " + FString::FromInt(FMath::Abs(MagicAmount)) + " MP! ");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " gains " + FString::FromInt(FMath::Abs(MagicAmount)) + " MP! ");
+				}
+
+				
 			}
 		}
 
@@ -1328,9 +1566,14 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 				FBuff BuffToApply;
 				
 				BuffToApply.AttackTempChange = Spell.AlterationOfAttack;
+
 				BuffToApply.DefenseTempChange = Spell.AlterationOfDefence;
+
 				BuffToApply.MagicAttackTempChange = Spell.AlterationOfMagicAttack;
+
+
 				BuffToApply.MagicDefenseTempChange = Spell.AlterationOfMagicDefense;
+
 
 				BuffToApply.TurnsLifetime = Spell.TurnsOfEffect;
 				BuffToApply.CurrentAbnormality = Spell.StatusAbnormality;
@@ -1351,12 +1594,66 @@ void ACombatController::ApplyMagicalEffect(ACustomMonsterActor* Damager, ACustom
 				BuffToApply.BuffID = Victim->ActiveBuffs.Num();
 
 				Victim->ApplyBuff(BuffToApply);
+				
+				if (Spell.AlterationOfAttack > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Attack for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Attack for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				if (Spell.AlterationOfDefence > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Defense for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Defense for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				if (Spell.AlterationOfAttack > 0 && Spell.AlterationOfDefence > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Physical Stats for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Physical Stats for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+
+				if (Spell.AlterationOfMagicAttack > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Magic Attack for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Magic Attack for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				if (Spell.AlterationOfMagicDefense > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Magic Defense for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Magic Defense for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				if (Spell.AlterationOfMagicAttack > 0 && Spell.AlterationOfMagicDefense > 0)
+				{
+					SetBottomTooltip(true, TargetString + " has increased Magical Stats for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+				else
+				{
+					SetBottomTooltip(true, TargetString + " has decreased Magical Stats for " + FString::FromInt(Spell.TurnsOfEffect) + " turns!");
+				}
+
+				
+				
 			}
 		}
 		
 
 
 		MyActionHUD->MonsterHPs_Current[Victim->MonsterID] = Victim->CurrentHealth;
+		MyActionHUD->MonsterMPs_Current[Victim->MonsterID] = Victim->CurrentMana;
 	}
 }
 
@@ -1382,19 +1679,19 @@ float ACombatController::GetMultiplierBasedOnElements(EElementalPower Element_Sp
 
 	if (Element_Spell == EElementalPower::Earth && Element_Victim == EElementalPower::Fire)
 	{
-		return 0;
+		return 0.5f;
 	}
 	if (Element_Spell == EElementalPower::Storm && Element_Victim == EElementalPower::Earth)
 	{
-		return 0;
+		return 0.5f;
 	}
 	if (Element_Spell == EElementalPower::Water && Element_Victim == EElementalPower::Storm)
 	{
-		return 0;
+		return 0.5f;
 	}
 	if (Element_Spell == EElementalPower::Fire && Element_Victim == EElementalPower::Water)
 	{
-		return 0;
+		return 0.5f;
 	}
 
 	if (Element_Spell == EElementalPower::Arcane)
@@ -1403,9 +1700,9 @@ float ACombatController::GetMultiplierBasedOnElements(EElementalPower Element_Sp
 	}
 	
 
-	if (Element_Spell ==  Element_Victim )
+	if (Element_Spell ==  Element_Victim && Element_Spell != EElementalPower::Normal)
 	{
-		return 0.5f;
+		return 0;
 	}
 
 	return 1;
@@ -1420,6 +1717,15 @@ void ACombatController::InitializeInventoryStock()
 
 	MyActionHUD->GroupAInventory = GroupAInventory;
 	MyActionHUD->GroupBInventory = GroupBInventory;
+}
+
+// *******************
+
+void ACombatController::SetBottomTooltip(bool bShouldReset, FString ActualText)
+{
+	MyActionHUD->bIsCustomTooltip = bShouldReset;
+	MyActionHUD->BottomTooltip = ActualText;
+
 }
 
 // *******************
@@ -1452,4 +1758,12 @@ void  ACombatController::DestroyFinishedAudio()
 	}
 
 	if (WillRerun)DestroyFinishedAudio();
+}
+
+// *******************
+
+void ACombatController::AI_ExecuteAction()
+{
+	APlayerController* PC = Cast<APlayerController>(this);
+	Cast<AMonsterAIController>(TurnOrder[IndexOfCurrentPlayingMonster]->Controller)->DecideNextAction(PC);
 }

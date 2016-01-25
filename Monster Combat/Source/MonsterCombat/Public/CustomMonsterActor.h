@@ -15,6 +15,14 @@ enum EPartyType
 	AI_Controlled
 };
 
+UENUM()
+enum EAIArchetypes
+{
+	Warrior,
+	Mage,
+	Healer
+};
+
 USTRUCT()
 struct FBuff
 {
@@ -57,10 +65,10 @@ public:
 UENUM()
 enum EMonsterType
 {
-	Spider,
-	FlowerMonster,
-	Orc,
-	MagmaDemon,
+	Werewolf,
+	Wyvern,
+	Treant,
+	Hydra,
 	Troll,
 	Mummy
 };
@@ -88,9 +96,13 @@ public:
 	UStaticMeshComponent* MonsterCameraRoot;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Components")
-	UWidgetComponent* MyWidgetComponent;
+		UWidgetComponent* MyHealthWidgetComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Components")
+		UWidgetComponent* MyManaWidgetComponent;
 
 	bool AllDone;
+
 	//***************************************************************************
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
@@ -100,19 +112,22 @@ public:
 		int32 MonsterID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
+		TEnumAsByte<EAIArchetypes> AI_Archetype;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
 		TEnumAsByte<EMonsterType> MonsterType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
-		int32 MaxHealth;
+		float MaxHealth;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
-		int32 CurrentHealth;
+		float CurrentHealth;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
-		int32 MaxMana;
+		float MaxMana;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
-		int32 CurrentMana;
+		float CurrentMana;
 
 	void UpdateHealth(bool WillCrit, int32 Amount);
 	void UpdateMana(bool WillCrit, int32 Amount);
@@ -195,8 +210,6 @@ public:
 		return (MagicDefense + MagicDefense_Temp>0) ? MagicDefense + MagicDefense_Temp : 0;
 	}
 
-	
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
 		int32 Attack;
 
@@ -239,6 +252,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
 		int32 AlterationTurns;
 	
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
+		FString MonsterName;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster Base Properties")
 		TEnumAsByte<EElementalPower> MonsterAffinityType;
 
@@ -259,9 +276,8 @@ public:
 
 	bool bIsDefending;
 
-	
-
 	void MonsterDeath();
+	void MonsterRez();
 
 	// **************************************************************************
 	
@@ -272,4 +288,8 @@ public:
 	// **************************************************************************
 
 	UMonsterAnimInstance* AnimInstance;
+
+	// **************************************************************************
+
+	
 };

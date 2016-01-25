@@ -29,9 +29,13 @@ void ACustomMonsterActor::BeginPlay()
 	ACombatController* TheController = Cast<ACombatController>(GetWorld()->GetFirstPlayerController());
 	TurningSpeed = TheController->TurningSpeed;
 	AnimInstance = Cast<UMonsterAnimInstance>(GetMesh()->GetAnimInstance());
-	InitPos = LeInitPosActor->GetActorLocation();
 
-	MyWidgetComponent = FindComponentByClass<class UWidgetComponent>();
+	InitPos = LeInitPosActor->GetActorLocation();
+	
+	TArray<UWidgetComponent*> WidgetComps;
+	GetComponents<UWidgetComponent>(WidgetComps);
+	MyHealthWidgetComponent = WidgetComps[0];
+	MyManaWidgetComponent = WidgetComps[1];
 
 	for (size_t i = 0; i < 6; i++)
 	{
@@ -39,6 +43,8 @@ void ACustomMonsterActor::BeginPlay()
 		{
 			MaxHealth = TheController->MonsterStats[i].MaxHP;
 			MaxMana = TheController->MonsterStats[i].MaxMP;
+
+			AI_Archetype = TheController->MonsterStats[i].AI_Archetype;
 
 			Attack_Temp = 0;
 			Defense_Temp = 0;
@@ -50,6 +56,7 @@ void ACustomMonsterActor::BeginPlay()
 
 			Speed = TheController->MonsterStats[i].Speed;
 			TheController->MyActionHUD->MonsterNames[MonsterID] = TheController->MonsterStats[i].MonsterNames[FMath::RandRange(0, TheController->MonsterStats[i].MonsterNames.Num() - 1)];
+			MonsterName = TheController->MyActionHUD->MonsterNames[MonsterID];
 
 			TheController->MyActionHUD->MonsterHPs_Current[MonsterID] = CurrentHealth;
 			TheController->MyActionHUD->MonsterHPs_Max[MonsterID] = MaxHealth;
@@ -125,8 +132,15 @@ void ACustomMonsterActor::Tick( float DeltaTime )
 void ACustomMonsterActor::MonsterDeath()
 {
 	bIsDead = true;
+	AnimInstance->bIsDead = bIsDead;
 	ACombatController* TheController = Cast<ACombatController>(GetWorld()->GetFirstPlayerController());
 	TheController->CheckForWinConditions();
+}
+
+void ACustomMonsterActor::MonsterRez()
+{
+	bIsDead = false;
+	AnimInstance->bIsDead = bIsDead;
 }
 
 void ACustomMonsterActor::UpdateHealth(bool WillCrit, int32 Amount)
@@ -136,9 +150,9 @@ void ACustomMonsterActor::UpdateHealth(bool WillCrit, int32 Amount)
 	CurrentHealth += Amount;
 
 	if(Amount<0)
-		Cast<UCombatMeters>(MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 0, 0, 1), FString::FromInt(Amount));
+		Cast<UCombatMeters>(MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 0, 0, 1), FString::FromInt(Amount));
 	else
-		Cast<UCombatMeters>(MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(0, 1, 0, 1), FString::FromInt(Amount));
+		Cast<UCombatMeters>(MyHealthWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(0, 1, 0, 1), FString::FromInt(Amount));
 			
 	if (CurrentHealth > MaxHealth)
 	{
@@ -162,9 +176,9 @@ void ACustomMonsterActor::UpdateMana(bool WillCrit, int32 Amount)
 	CurrentMana += Amount;
 
 	if (Amount<0)
-		Cast<UCombatMeters>(MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 0, 1, 1), "" + FString::FromInt(Amount));
+		Cast<UCombatMeters>(MyManaWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(1, 0, 1, 1), "" + FString::FromInt(Amount));
 	else
-		Cast<UCombatMeters>(MyWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(0, 1, 1, 1), "" + FString::FromInt(Amount));
+		Cast<UCombatMeters>(MyManaWidgetComponent->GetUserWidgetObject())->CreateNumberOverHead(WillCrit, FLinearColor(0, 1, 1, 1), "" + FString::FromInt(Amount));
 
 	if (CurrentMana > MaxMana)
 	{

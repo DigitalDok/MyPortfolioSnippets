@@ -13,7 +13,8 @@ enum EStatusAbnormality
 	Stun,
 	Paralyze,
 	Silence,
-	Blind
+	Blind,
+	Reflect
 };
 
 UENUM(BlueprintType)
@@ -138,6 +139,11 @@ struct FAbility
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
 		float SpellCritMultiplier;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
+		bool bIsSelfBuff;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Ability Stuff")
+		bool bIsDefensiveSpell;
 };
 
 USTRUCT(BlueprintType)
@@ -178,13 +184,13 @@ struct FItem
 		int32 HP_Restored_Quantity;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Item Stuff")
-		int32 HP_Restored_Percentage;
+		float HP_Restored_Percentage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Item Stuff")
 		int32 MP_Restored_Quantity;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Item Stuff")
-		int32 MP_Restored_Percentage;
+		float MP_Restored_Percentage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "F Item Stuff")
 		bool Status_Recovery;
