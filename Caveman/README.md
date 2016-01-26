@@ -32,3 +32,4 @@ Mechanics & Systems Built:
 - Crafting System (Simple Crafts & Cooking over Fire)
 - Resting System
 - Campfire System (Setting up Campfires so you can cook and be warm)
+- Global Sound Effect Playback System 
