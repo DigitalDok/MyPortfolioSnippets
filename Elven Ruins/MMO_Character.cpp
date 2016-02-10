@@ -709,15 +709,7 @@ void AMMO_Character::MoveRightInput(float AxisValue)
 
 	if (FMath::Abs(AxisValue) > 0.05f)
 	{
-	//	if (LockedTarget)
-	//	{
-	//		AddMovementInput((LockedTarget->GetActorLocation() - LockOnCam->GetComponentLocation()).RightVector, AxisValue);
-	//	}
-	//	else
-	//	{
-			AddMovementInput(GetActorRightVector(), AxisValue);
-	//	}
-		
+		AddMovementInput(GetActorRightVector(), AxisValue);
 	}
 }
 
@@ -731,16 +723,7 @@ void AMMO_Character::MoveForwardInput(float AxisValue)
 
 	if (FMath::Abs(AxisValue) > 0.05f)
 	{
-	//	if (LockedTarget)
-	//	{
-	//		AddMovementInput(LockedTarget->GetActorLocation() - LockOnCam->GetComponentLocation(), AxisValue);
-	//	}
-	//	else
-	//	{
-			AddMovementInput(GetActorForwardVector(), AxisValue);
-	//	}
-
-		
+		AddMovementInput(GetActorForwardVector(), AxisValue);
 	}
 }
 
@@ -809,10 +792,6 @@ void AMMO_Character::JumpAction()
 	Jump();
 }
 
-void AMMO_Character::LocalAttackMelee()
-{
-	
-}
 
 void AMMO_Character::AttemptToLockOn()
 {
