@@ -88,70 +88,7 @@ public class AdventurePointer : MonoBehaviour
     #region Adventure Item Management
     private void Interaction()
     {
-        #region Closet_Mechanic_Testbed
         
-        // Note: This is not needed anymore (used in Closet_Mechanic_Testbed)
-        if (Input.GetKeyUp(KeyCode.Z) && !InventoryManager.InventoryManipulation)
-        {
-            if (LastKnownGameObject)
-            {
-                if (LastKnownGameObject.GetComponent<InteractiveItem>().Name == "ClosetDoor2")
-                {
-                    LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddForce(-transform.forward * 100, ForceMode.Force); 
-                }
-            }
-        }
-        if (Input.GetKeyUp(KeyCode.X) && !InventoryManager.InventoryManipulation)
-        {
-            if (LastKnownGameObject)
-            {
-                if (LastKnownGameObject.GetComponent<InteractiveItem>().Name == "ClosetDoor2")
-                {
-                    LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddForce(transform.forward * 100, ForceMode.Force);               
-                }
-            }
-        }
-        
-        // Note: This is not needed anymore (used in Closet_Mechanic_Testbed)
-        if (Input.GetKeyUp(KeyCode.Z) && !InventoryManager.InventoryManipulation)
-        {
-            if (LastKnownGameObject)
-            {
-                if (LastKnownGameObject.GetComponent<InteractiveItem>().Name == "ClosetDoor3")
-                {
-                    if (LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<HingeJoint>().anchor.z > 0)
-                    {
-                        LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddTorque(-transform.forward * 100, ForceMode.Force);
-                    }
-                    else
-                    {
-                        LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddTorque(transform.forward * 100, ForceMode.Force);
-                    }    
-                }
-            }
-        }
-        if (Input.GetKeyUp(KeyCode.X) && !InventoryManager.InventoryManipulation)
-        {
-            if (LastKnownGameObject)
-            {
-                if (LastKnownGameObject.GetComponent<InteractiveItem>().Name == "ClosetDoor3")
-                {
-                    if (LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<HingeJoint>().anchor.z > 0)
-                    {
-                        LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddTorque(transform.forward * 200, ForceMode.Force);
-                    }
-                    else
-                    {
-                        LastKnownGameObject.GetComponent<InteractiveItem>().GetComponent<Rigidbody>().AddTorque(-transform.forward * 100, ForceMode.Force);
-                    } 
-                    
-                }
-            }
-        }
-        #endregion
-
-
-
         if (Input.GetButtonDown("Interact") && !InventoryManager.InventoryManipulation)
         {
             if (LastKnownGameObject)
