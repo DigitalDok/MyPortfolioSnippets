@@ -2,6 +2,14 @@
 This is my public repository which holds a number of C# Scripts or C++ Classes written by me, used in my games.
 Disclaimer: The following snippets are purely a *part* of the mechanics I've built for each game. For a full list of implemented features, please visit the respective project page in http://kdokos.wix.com/kdokos#!projects/c1rez for the project you are interested in.
 
+# Bots Arena (AI Team-Based Shooter - Unreal Engine C++)
+- Bot Logic & AI Decision Making Process (Based on Role)
+- Custom BT Node
+- Morale System
+- Fear System
+- Aggro (Targeting) System
+- Gameplay Adjustments & Randomization
+
 # A Day With Timmy (Adventure Point and Click - Unreal Engine C++)
 - Custom Dialogue System with Typewriter Effect
 - Custom Inventory System
